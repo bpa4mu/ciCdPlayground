@@ -1,15 +1,19 @@
 name: CI
 
-on: 
-  push:
+on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to tag (e.g. 1.2.3)'
+        required: true
+        type: string
   
 permissions:
   checks: write
   pull-requests: write
   id-token: write
-  contents: read
+  contents: write
   pages: write
 
 jobs:
@@ -30,3 +34,16 @@ jobs:
       run: yarn build
     - name: Integration tests
       run: yarn test:e2e
+    - name: Publish JUnit Test Report
+      if: success() || failure()
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      with:
+        files: |
+          **/reports/**/*.xml
+    - name: Create and push git tag
+      if: success() && github.event_name == 'workflow_dispatch'
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "action@github.com"
+        git tag ${{ github.event.inputs.version }}
+        git push origin ${{ github.event.inputs.version }}
